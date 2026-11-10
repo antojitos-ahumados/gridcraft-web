@@ -1,3 +1,12 @@
+# Ready-to-install GitHub Actions workflow.
+#
+# This file is kept in scripts/ because the token used to create this
+# repository can push ordinary files but cannot create files under
+# .github/workflows/ (that requires the 'workflow' scope).
+#
+# To install: move this file to .github/workflows/deploy-pages.yml,
+# commit, and push. Then set the Pages source to GitHub Actions.
+#
 # Host the official GridCraft web (WASM) release on GitHub Pages.
 #
 # To bump GridCraft: change GRIDCRAFT_VERSION below (no leading "v"), then
