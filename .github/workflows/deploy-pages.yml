@@ -1,0 +1,76 @@
+# Host the official GridCraft web (WASM) release on GitHub Pages.
+#
+# To bump GridCraft: change GRIDCRAFT_VERSION below (no leading "v"), then
+# push to main or run this workflow from the Actions tab.
+#
+# WordCraft is not deployed yet. To add it later, set WORDCRAFT_VERSION and
+# unpack wordcraft-web-${WORDCRAFT_VERSION}.zip into site/wordcraft/.
+
+name: Deploy GridCraft to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  GRIDCRAFT_VERSION: "0.18.0"
+  # WORDCRAFT_VERSION: "x.y.z"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download and unpack GridCraft web release
+        run: |
+          set -euo pipefail
+          VER="${GRIDCRAFT_VERSION}"
+          ZIP="gridcraft-web-${VER}.zip"
+          BASE="https://github.com/storytold/gridcraft/releases/download/v${VER}"
+          curl -fsSL -o SHA256SUMS.txt "${BASE}/SHA256SUMS.txt"
+          curl -fsSL -o "${ZIP}" "${BASE}/${ZIP}"
+          grep -F " ${ZIP}" SHA256SUMS.txt | sha256sum -c -
+          mkdir -p /tmp/gridcraft-unpack site
+          unzip -q "${ZIP}" -d /tmp/gridcraft-unpack
+          SRC="$(find /tmp/gridcraft-unpack -maxdepth 2 -name index.html -printf '%h\n' | head -n1)"
+          if [ -z "${SRC}" ]; then
+            echo "index.html not found in ${ZIP}" >&2
+            exit 1
+          fi
+          cp -a "${SRC}/." site/
+          touch site/.nojekyll
+          # Keep a copy of the upstream licenses next to the app on Pages.
+          for f in LICENSE-MIT LICENSE-APACHE NOTICE ATTRIBUTION.md; do
+            if [ ! -e "site/${f}" ] && [ -f "${f}" ]; then
+              cp "${f}" "site/${f}"
+            fi
+          done
+          # Later: if WORDCRAFT_VERSION is set, download wordcraft-web-${WORDCRAFT_VERSION}.zip
+          # and unpack its site into site/wordcraft/.
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
