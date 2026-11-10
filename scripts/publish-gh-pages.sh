@@ -44,5 +44,20 @@ git -C "${SITE}" config user.email "antojitos-ahumados@users.noreply.github.com"
 git -C "${SITE}" add -A
 git -C "${SITE}" commit -m "Publish official GridCraft web ${VER}"
 git -C "${SITE}" remote add origin "${ORIGIN}"
-git -C "${SITE}" push --force origin gh-pages
+# Prefer GH_TOKEN when set. Use git username/password auth, not a bearer header.
+if [ -n "${GH_TOKEN:-}" ]; then
+  ASKPASS="$(mktemp)"
+  cat > "${ASKPASS}" << 'SCRIPT'
+#!/bin/bash
+case "${1:-}" in
+  *Username*) echo "x-access-token" ;;
+  *) echo "${GH_TOKEN}" ;;
+esac
+SCRIPT
+  chmod 700 "${ASKPASS}"
+  GIT_ASKPASS="${ASKPASS}" GIT_TERMINAL_PROMPT=0 git -C "${SITE}" push --force origin gh-pages
+  rm -f "${ASKPASS}"
+else
+  git -C "${SITE}" push --force origin gh-pages
+fi
 echo "Published GridCraft web ${VER} to gh-pages"
